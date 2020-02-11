@@ -1,0 +1,58 @@
+trigger: none
+pool:
+    vmImage: 'ubuntu-latest'
+variables:
+    - group: GitHub
+    - group: DEFAULT_PROJECT_SETTINGS
+
+stages:
+- stage: Add_and_configure_AZ_DevOps_extension
+  jobs:
+  - job: Add_and_configure_AZ_DevOps_extension
+    steps:
+        # Updating the python version available on the linux agent
+      - checkout: self
+        submodules: true
+        persistCredentials: true
+      # - script: |
+      #     git config --global user.email $(GH_USER_MAIL)
+      #     git config --global user.name $(GH_USER_NAME)
+        displayName: "Configure git"
+      - script: |
+          sudo apt-get update
+          sudo apt-get -y install tree
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.x'
+          architecture: 'x64'
+      # Updating pip to latest
+      - script: python -m pip install --upgrade pip
+        displayName: 'Upgrade pip'
+        # Updating to latest Azure CLI version.
+      - script: pip install --pre azure-cli --extra-index-url https://azurecliprod.blob.core.windows.net/edge
+        displayName: 'upgrade azure cli'
+      - script: az --version
+        displayName: 'Show Azure CLI version'
+      - script: az extension add -n azure-devops
+        displayName: 'Install Azure DevOps Extension'
+      - script: echo ${AZURE_DEVOPS_CLI_PAT} | az devops login
+        env:
+          AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
+        displayName: 'Login Azure DevOps Extension'
+      - script: az devops configure --defaults organization=$(AZ_ORGANIZATION) project=$(AZ_PROJECT) --use-git-aliases true
+        displayName: 'Set default Azure DevOps organization and project'
+      - script: |
+            set +e ;
+            for rn in $(az repos list --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"name\":\s\"docker_.*\"" | awk -F ":" '{ print $2 }' | sed -e 's/\"//g'); do
+            read repo_user repo_address<<<$(az repos show --repository $rn --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"remoteUrl\":\s\".+\"" | awk -F " " '{ print $2 }' | sed -s 's/\"//g' | cut -d/ -f2- | cut -d/ -f2-  | awk -F "@" '{ print $1 " "  $2}')
+            echo "repo_user, repo_address $repo_user, $repo_address"
+            git clone https://$repo_user:$AZURE_DEVOPS_CLI_PAT@$repo_address
+            done
+        env:
+          AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
+      - script: |
+            tree /home/vsts/work/1/s
+
+
+
+
