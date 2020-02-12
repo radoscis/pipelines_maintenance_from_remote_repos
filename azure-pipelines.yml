@@ -21,40 +21,10 @@ stages:
       - script: |
           sudo apt-get update
           sudo apt-get -y install tree
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.x'
-          architecture: 'x64'
-      # Updating pip to latest
-      - script: python -m pip install --upgrade pip
-        displayName: 'Upgrade pip'
-        # Updating to latest Azure CLI version.
-      - script: pip install --pre azure-cli --extra-index-url https://azurecliprod.blob.core.windows.net/edge
-        displayName: 'upgrade azure cli'
-      - script: az --version
-        displayName: 'Show Azure CLI version'
-      - script: az extension add -n azure-devops
-        displayName: 'Install Azure DevOps Extension'
-      - script: echo ${AZURE_DEVOPS_CLI_PAT} | az devops login
-        env:
-          AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
-        displayName: 'Login Azure DevOps Extension'
-      - script: az devops configure --defaults organization=$(AZ_ORGANIZATION) project=$(AZ_PROJECT) --use-git-aliases true
-        displayName: 'Set default Azure DevOps organization and project'
       - script: |
             set +e ;
-            for rn in $(az repos list --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"name\":\s\"docker_.*\"" | awk -F ":" '{ print $2 }' | sed -e 's/\"//g'); do
-            #repo_address=$(az repos show --repository $rn --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"remoteUrl\":\s\".+\"" | awk -F " " '{ print $2 }' | sed -s 's/\"//g' | cut -d/ -f2- | cut -d/ -f2-)
-            repo_url=$(az repos show --repository $rn --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"remoteUrl\":\s\".+\"" | awk -F " " '{ print $2 }'  | sed -e 's/\"//g')
-            #echo "repo name, repo url $rn, ${rurl};"
-            #echo "command = git clone https://$(AZURE_DEVOPS_CLI_PAT)/${repo_address}"
-            git clone ${repo_url}
-            done
+            git clone  https://tomtomweb@dev.azure.com/tomtomweb/Nav-Pipeline/_git/docker_project1
         env:
           AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
       - script: |
             tree /home/vsts/work/1/s
-
-
-
-
