@@ -23,8 +23,8 @@ stages:
           sudo apt-get -y install tree
       - script: |
             set +e ;
-            git clone  https://tomtomweb@dev.azure.com/tomtomweb/Nav-Pipeline/_git/docker_project1
+            git clone  https://tomtomweb:$MAPPED_PAT@dev.azure.com/tomtomweb/Nav-Pipeline/_git/docker_project1
         env:
-          AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
+          MAPPED_PAT: $(AZ_PAT)
       - script: |
             tree /home/vsts/work/1/s
