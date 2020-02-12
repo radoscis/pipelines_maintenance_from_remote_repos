@@ -43,10 +43,24 @@ stages:
         displayName: 'Set default Azure DevOps organization and project'
       - script: |
             set +e ;
-            for rn in $(az repos list --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"name\":\s\"docker_.*\"" | awk -F ":" '{ print $2 }' | sed -e 's/\"//g'); do
-            read repo_user repo_address<<<$(az repos show --repository $rn --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"remoteUrl\":\s\".+\"" | awk -F " " '{ print $2 }' | sed -s 's/\"//g' | cut -d/ -f2- | cut -d/ -f2-  | awk -F "@" '{ print $1 " "  $2}')
+            for repo_name in $(az repos list --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"name\":\s\"docker_.*\"" | awk -F ":" '{ print $2 }' | sed -e 's/\"//g'); do
+            read repo_user repo_address<<<$(az repos show --repository $repo_name --org $(AZ_ORGANIZATION) --project $(AZ_PROJECT) | grep -oE "\"remoteUrl\":\s\".+\"" | awk -F " " '{ print $2 }' | sed -s 's/\"//g' | cut -d/ -f2- | cut -d/ -f2-  | awk -F "@" '{ print $1 " "  $2}')
             echo "repo_user, repo_address $repo_user, $repo_address"
             git clone https://$repo_user:$AZURE_DEVOPS_CLI_PAT@$repo_address
+            pipeline_ini="$repo_name/azure-pipelines.ini"
+            INI_CONTENT=$(sed "s/;/#/g;s/\\s*=\\s*/=/g;/\\[/d" ${pipeline_ini})
+            eval "$INI_CONTENT"
+            echo "pipeline_name = $pipeline_name"
+            az pipelines list | grep -E "\"name\":\s\"${pipeline_name}\","
+            if [ $? -ne 0 ]; then
+                az pipelines create --name $pipeline_name --description "$pl_description" \
+                --repository "https://${repo_user}@${repo_address}" --branch master --yml-path azure-pipelines.yml
+            else
+                pid=$(az pipelines list --name $pipeline_name --query  "[].id[]" | grep -E -v "\\[|\\]")
+                echo "params = $pid, $pipeline_name , $pl_description,  $(AZ_REPO_ENDPOINT_ID), $(Build.Repository.Uri) , $(Build.SourceBranchName)"
+                az pipelines update --id $pid --description "$pl_description" --yml-path azure-pipelines.yml
+            fi
+
             done
         env:
           AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
