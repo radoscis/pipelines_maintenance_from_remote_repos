@@ -43,8 +43,10 @@ stages:
         displayName: 'Set default Azure DevOps organization and project'
       - script: |
             set +e ;
-            for repo_url repo_name in $(curl --silent  https://radoscis:$GH_USER_TOKEN@api.github.com/users/radoscis/repos?visibility=public  | jq -r '.[] | {repo_url: .html_url, repo_name: .name} | select( .repo_name | contains("docker_")) | [.repo_url, .repo_name] | @csv' | tr -d '"' | awk -F "," '{print $1 " " $2}'); do
+            curl --silent  https://radoscis:$GH_USER_TOKEN@api.github.com/users/radoscis/repos?visibility=public  | jq -r '.[] | {repo_url: .html_url, repo_name: .name} | select( .repo_name | contains("docker_")) | [.repo_url, .repo_name] | @csv' | tr -d '"' | awk -F "," '{print $1 " " $2}' | while read repo_url repo_name; do
+              echo "repo url = $repo_url, repo name = $repo_name"
               repo_address=${repo_url#https://}
+              echo "repo_address = $repo_address"
               git clone https://dummyuser:$GH_USER_TOKEN@${repo_address}
               pipeline_ini="$repo_name/azure-pipelines.ini"
               INI_CONTENT=$(sed "s/;/#/g;s/\\s*=\\s*/=/g;/\\[/d" ${pipeline_ini})
@@ -59,7 +61,7 @@ stages:
                   pid=$(az pipelines list --name $pipeline_name --query  "[].id[]" | grep -E -v "\\[|\\]")
                   echo "params = $pid, $pipeline_name , $pl_description,  $(AZ_REPO_ENDPOINT_ID), $(Build.Repository.Uri) , $(Build.SourceBranchName)"
                   az pipelines update --id $pid --description "$pl_description" --yml-path azure-pipelines.yml
-                fi
+                fi;
             done
         env:
           AZURE_DEVOPS_CLI_PAT: $(AZ_PAT)
