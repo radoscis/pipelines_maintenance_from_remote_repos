@@ -43,7 +43,6 @@ stages:
         displayName: 'Set default Azure DevOps organization and project'
       - script: |
             set +e ;
-            curl --silent  https://radoscis:$GH_USER_TOKEN@api.github.com/users/radoscis/repos?visibility=public
             curl --silent  https://radoscis:$GH_USER_TOKEN@api.github.com/users/radoscis/repos?visibility=public  | jq -r '.[] | {repo_url: .html_url, repo_name: .name} | select( .repo_name | contains("docker_")) | [.repo_url, .repo_name] | @csv' | tr -d '"' | awk -F "," '{print $1 " " $2}' | while read repo_url repo_name; do
               echo "repo url = $repo_url, repo name = $repo_name"
               repo_address=${repo_url#https://}
